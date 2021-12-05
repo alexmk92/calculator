@@ -7,11 +7,6 @@ use App\Services\Calculator\Operators\DivideOperator;
 
 class StandardCalculator extends BaseCalculator
 {
-    public function evaluate(string ...$components): float
-    {
-        return 0;
-    }
-
     /**
      * @return IOperationContract[]
      */
