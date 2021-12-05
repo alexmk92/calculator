@@ -2,20 +2,20 @@
 
 namespace App\Services\Calculator;
 
-use App\Services\Calculator\ICalculatorContract;
+use App\Services\Calculator\Expression\Expression;
 
 class CalculatorService
 {
-    /** @var ICalculatorContract $calculator */
-    private $calculator = null;
+    /** @var Expression $expression */
+    private $expression;
 
-    public function __construct(ICalculatorContract $calculator)
+    public function __construct(Expression $expression)
     {
-        $this->calculator = $calculator;
+        $this->expression = $expression;
     }
 
-    public function evaluate(string ...$expression): float
+    public function evaluate(string $input): float
     {
-        return $this->calculator->evaluate(...$expression);
+        return $this->expression->evaluate($input);
     }
 }

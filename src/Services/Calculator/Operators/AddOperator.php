@@ -6,16 +6,14 @@ class AddOperator implements IOperationContract
 {
     public function evaluate(float ...$components)
     {
-        $sum = array_reduce($components, function ($carry, $next) {
+        return array_reduce($components, function ($carry, $next) {
             $carry += $next;
             return $carry;
         }, 0);
-
-        return $sum;
     }
 
-    public function getSymbolName(): string
+    public function getSymbol(): string
     {
-        return 'add';
+        return '+';
     }
 }

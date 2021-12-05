@@ -23,8 +23,8 @@ class DivideOperator implements IOperationContract
         return $left / $right;
     }
 
-    public function getSymbolName(): string
+    public function getSymbol(): string
     {
-        return 'divide';
+        return '/';
     }
 }

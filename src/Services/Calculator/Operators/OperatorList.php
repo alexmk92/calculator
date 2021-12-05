@@ -19,7 +19,7 @@ class OperatorList
     public function addOperators(IOperationContract ...$operators)
     {
         foreach ($operators as $operator) {
-            $this->operators[$operator->getSymbolName()] = $operator;
+            $this->operators[$operator->getSymbol()] = $operator;
         }
     }
 
