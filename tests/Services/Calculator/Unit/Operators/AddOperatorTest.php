@@ -5,7 +5,7 @@ use PHPUnit\Framework\TestCase;
 
 final class AddOperatorTest extends TestCase
 {
-    private $operator;
+    protected $operator;
 
     public function setup(): void
     {
