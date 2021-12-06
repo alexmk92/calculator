@@ -26,15 +26,11 @@ services:
     tags: ["controller.service_arguments"]
 
   App\Services\Calculator\StandardCalculator: ~
-
   App\Services\Calculator\ScientificCalculator: ~
 
-  # The ScientificCalculator service will be injected when a $scientificCalculator
-  # typehint argument is detected.
-  App\Services\Calculator\ICalculatorContract $scientificCalculator: '@App\Services\Calculator\ScientificCalculator'
-
-  # However, by default we will use the standard calculator
+  # Use a standard calculator service
   App\Services\Calculator\ICalculatorContract: '@App\Services\Calculator\StandardCalculator'
+  # App\Services\Calculator\ICalculatorContract: '@App\Services\Calculator\ScientificCalculator'
 
   App\Services\Calculator\CalculatorService:
     autowire: true
