@@ -8,15 +8,22 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CalculatorController
 {
-    public function index(Request $request, CalculatorService $calculator): Response
+    public function get(Request $request, CalculatorService $calculator): Response
     {
-        $input = "10 + 12 + 2 + 5 / 2 + 2 + 3 / 2 + 5 * 6 + 2";
-        // $calculator = (new CalculatorService())->withStandardFunctions();
-        dd($calculator);
-        dd($calculator->evaluate($input));
-
         return new Response(
             '<html><body>Lucky number: </body></html>'
         );
+    }
+
+    public function post(Request $request, CalculatorService $calculator): Response
+    {
+        $calculation = $calculator->evaluate($request->get('calculation'));
+        $response = ['code' => 200, 'data' => $calculation];
+
+        if (is_null($calculation)) {
+            $response['code'] = 400;
+        }
+
+        return new Response(json_encode($response));
     }
 }

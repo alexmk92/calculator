@@ -3,14 +3,23 @@
 namespace App\Services\Calculator;
 
 use App\Services\Calculator\Expression\Expression;
+use App\Services\Calculator\Expression\ExpressionParser;
 use App\Services\Calculator\Operators\OperatorList;
 
 abstract class BaseCalculator implements ICalculatorContract
 {
     /** @var OperatorList $operator_list */
     protected $operator_list;
-    /** @var Expression $expression */
-    protected $expression;
+    /** @var ExpressionParser $expressionParser */
+    private $expressionParser;
+
+    /**
+     * @required
+     */
+    public function setExpressionParser(ExpressionParser $expressionParser)
+    {
+        $this->expressionParser = $expressionParser;
+    }
 
     /**
      * @required
@@ -19,14 +28,6 @@ abstract class BaseCalculator implements ICalculatorContract
     {
         $this->operator_list = $operator_list;
         $this->operator_list->addOperators(...$this->getOperators());
-    }
-
-    /**
-     * @required
-     */
-    public function setExpression(Expression $expression)
-    {
-        $this->expression = $expression;
     }
 
     /**
@@ -51,9 +52,16 @@ abstract class BaseCalculator implements ICalculatorContract
      *
      * @param string $input
      * @return float
+     *
+     * @throws Exception $e - when dividing by zero we will get an excpetion
      */
     public function evaluate(string $input): float
     {
-        return $this->expression->evaluate($input);
+        /** @var Expression[] $expression */
+        $expressions = $this->expressionParser->parse($input);
+
+        return array_reduce($expressions, function ($carry, $expression) {
+            return $carry += $expression->evaluate();
+        }, 0);
     }
 }

@@ -2,9 +2,11 @@
 
 namespace App\Services\Calculator;
 
+use Exception;
+
 class CalculatorService
 {
-    /** @var Calculator $calculator */
+    /** @var ICalculatorContract $calculator */
     private $calculator;
 
     public function __construct(ICalculatorContract $calculator)
@@ -12,8 +14,12 @@ class CalculatorService
         $this->calculator = $calculator;
     }
 
-    public function evaluate(string $input): float
+    public function evaluate(string $input): ?float
     {
-        return $this->calculator->evaluate($input);
+        try {
+            return $this->calculator->evaluate($input);
+        } catch (Exception $e) {
+            return null;
+        }
     }
 }

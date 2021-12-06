@@ -2,6 +2,7 @@
 
 namespace App\Services\Calculator;
 
+use App\Services\Calculator\Expression\ExpressionParser;
 use App\Services\Calculator\Operators\IOperationContract;
 
 interface ICalculatorContract

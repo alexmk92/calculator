@@ -6,9 +6,10 @@ use App\Services\Calculator\Operators\IOperationContract;
 
 class Component
 {
+    /** @var Component|float $left */
     private $left;
+    /** @var Component|float $right */
     private $right;
-
     /** @var IOperationContract $operator */
     private $operator;
 
@@ -80,5 +81,21 @@ class Component
         $right = $this->right instanceof Component ? $this->right->getValue() : $this->right;
 
         return $this->operator->evaluate($left, $right);
+    }
+
+    /**
+     * @return float|Component|null
+     */
+    public function getLeft()
+    {
+        return $this->left;
+    }
+
+    /**
+     * @return Component|float
+     */
+    public function getRight()
+    {
+        return $this->right;
     }
 }

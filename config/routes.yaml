@@ -1,3 +1,9 @@
 index:
   path: /
-  controller: App\Controller\CalculatorController::index
+  methods: GET
+  controller: App\Controller\CalculatorController::get
+
+calculate:
+  path: /calculate
+  methods: POST
+  controller: App\Controller\CalculatorController::post

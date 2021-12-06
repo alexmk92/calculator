@@ -4,20 +4,17 @@ namespace App\Services\Calculator\Expression;
 
 class Expression
 {
-    /** @var ExpressionParser $expressionParser */
-    private $expressionParser;
     /** @var Component[] $components */
-    private $components = [];
+    private $components;
 
-    public function __construct(ExpressionParser $expressionParser)
+    public function setComponents(Component ...$components): self
     {
-        $this->expressionParser = $expressionParser;
+        $this->components = $components;
+        return $this;
     }
 
-    public function evaluate(string $input): float
+    public function evaluate(): float
     {
-        $this->components = $this->expressionParser->parse($input);
-
         return array_reduce($this->components, function ($carry, $component) {
             return $carry += $component->getValue();
         }, 0);
