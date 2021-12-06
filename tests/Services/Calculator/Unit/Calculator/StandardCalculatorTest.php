@@ -48,6 +48,10 @@ final class StandardCalculatorTest extends KernelTestCase
 
     public function testDivideByZeroReturnsE(): void
     {
-        $this->assertEquals('E', $this->calculator->evaluate("10 / 0"));
+        try {
+            $this->calculator->evaluate("10 / 0");
+        } catch (Exception $e) {
+            $this->assertEquals("Division by zero", $e->getMessage());
+        }
     }
 }
