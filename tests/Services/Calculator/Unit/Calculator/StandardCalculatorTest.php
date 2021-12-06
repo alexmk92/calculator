@@ -1,6 +1,6 @@
 <?php
 
-use App\Services\Calculator\StandardCalculator;
+use App\Services\Calculator\ICalculatorContract;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class StandardCalculatorTest extends KernelTestCase
@@ -13,7 +13,7 @@ final class StandardCalculatorTest extends KernelTestCase
 
         // self::$container on the KernelTestCase exposes private services so we can test them
         // without modifying the service definition, woop! :D
-        $this->calculator = self::$container->get(StandardCalculator::class);
+        $this->calculator = static::getContainer()->get(ICalculatorContract::class);
     }
 
     public function testCanAddTwoWholeNumbers(): void
@@ -46,12 +46,19 @@ final class StandardCalculatorTest extends KernelTestCase
         $this->assertEquals(27.5, $this->calculator->evaluate("(5 * 11) / 2"));
     }
 
-    public function testDivideByZeroReturnsE(): void
+    public function testDivideByZeroReturnsError(): void
     {
         try {
             $this->calculator->evaluate("10 / 0");
         } catch (Exception $e) {
             $this->assertEquals("Division by zero", $e->getMessage());
         }
+    }
+
+    public function testNonNumericInputReturnsZero(): void
+    {
+        // Running out of time - mixed assertions like hello + world + 2 will currently
+        // throw an excpetion (due to float being required)
+        $this->assertEquals(0, $this->calculator->evaluate("hello + world"));
     }
 }

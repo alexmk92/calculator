@@ -134,7 +134,8 @@ class ExpressionParser
             $input = "({$input})";
         }
 
-        preg_match_all("(\(([ ]*\d+ ?[ ]*([\+-\/*][ ]*\d+[ ]*)*)\)|([ ]*[\+-\/*][ ]*\d+?[ ]*)?)", $input, $matches);
+        $symbols = implode('\\', array_keys($this->operatorList));
+        preg_match_all("(\(([ ]*\d+ ?[ ]*([\{$symbols}*][ ]*\d+[ ]*)*)\)|([ ]*[\+-\/*][ ]*\d+?[ ]*)?)", $input, $matches);
 
         if (empty($matches)) {
             throw new Exception("Empty expression detected");

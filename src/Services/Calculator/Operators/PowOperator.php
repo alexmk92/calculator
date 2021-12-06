@@ -17,6 +17,6 @@ class PowOperator implements IOperationContract
 
     public function getSymbol(): string
     {
-        return 'pow';
+        return '^';
     }
 }
