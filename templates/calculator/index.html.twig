@@ -1,10 +1,29 @@
 {% extends 'base.html.twig' %}
 
-{% block body %}
-    <h1>Test</h1>
+{% block javascripts %}
+    <script src="{{ asset('js/calculator.js') }}"></script>
+{% endblock %}
 
-    {% for operator in operators %}
-    <h1>Yo</h1>
-        <button>{{ operator }}</button>
+{% block body %}
+    <form class='calculator' action='{{ path('calculate') }}' method='POST'>
+        <div class="display">{{ result }}</div>
+        <input id="expression" type="hidden" name="expression" />
+        <div class='controls'>
+            <div class='container'>
+    {% for controlGroup in controls %}
+            <div>
+        {% for controlCell in controlGroup %}
+                <input type="{{ controlCell != '='  ? 'button' : 'submit' }}" value="{{ controlCell }}" />
+        {% endfor %}
+            </div>
     {% endfor %}
+            </div>
+            <div class='container'>
+    {% for operator in operators %}
+                <input type="button" value="{{ operator }}" />
+    {% endfor %}
+            </div>
+        </div>
+    </form>
+
 {% endblock %}

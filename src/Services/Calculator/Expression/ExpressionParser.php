@@ -72,6 +72,9 @@ class ExpressionParser
             // component as the left node.
             $componentParts = count($possibleComponent);
             if ($componentParts < 2) {
+                if (is_numeric($possibleComponent[0])) {
+                    $components[] = new Component($possibleComponent[0]);
+                }
                 continue;
             }
 
@@ -128,13 +131,15 @@ class ExpressionParser
      */
     protected function extractExpressionStrings(string $input): array
     {
+        $symbols = implode('\\', array_keys($this->operatorList));
+        $input = trim($input, $symbols);
+
         // Ensure we have the formula wrapped in brackets, unless
         // it has already been wrapped.
         if (strpos($input, '(', 0) !== 0) {
             $input = "({$input})";
         }
 
-        $symbols = implode('\\', array_keys($this->operatorList));
         preg_match_all("(\(([ ]*\d+ ?[ ]*([\{$symbols}*][ ]*\d+[ ]*)*)\)|([ ]*[\+-\/*][ ]*\d+?[ ]*)?)", $input, $matches);
 
         if (empty($matches)) {

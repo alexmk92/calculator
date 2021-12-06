@@ -77,18 +77,24 @@ class Component
      */
     public function getValue(): float
     {
-        $left  = $this->left instanceof Component ? $this->left->getValue() : $this->left;
-        $right = $this->right instanceof Component ? $this->right->getValue() : $this->right;
+        $left  = $this->left instanceof Component ? $this->left->getValue() : $this->getLeft();
+        $right = $this->right instanceof Component ? $this->right->getValue() : $this->getRight();
+
+        // If someone entered something like +33 on its own, then this will evaluate to
+        // either 0 or the value of left/right
+        if (is_null($this->operator)) {
+            return $this->getLeft() ?: $this->getRight();
+        }
 
         return $this->operator->evaluate($left, $right);
     }
 
     /**
-     * @return float|Component|null
+     * @return float|Component
      */
     public function getLeft()
     {
-        return $this->left;
+        return $this->left ?: 0;
     }
 
     /**
@@ -96,6 +102,6 @@ class Component
      */
     public function getRight()
     {
-        return $this->right;
+        return $this->right ?: 0;
     }
 }

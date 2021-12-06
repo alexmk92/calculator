@@ -4,25 +4,27 @@ namespace App\Controller;
 
 use App\Services\Calculator\CalculatorService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 class CalculatorController extends AbstractController
 {
-    public function index(CalculatorService $calculatorService): Response
+    public function index(Request $request, CalculatorService $calculatorService): Response
     {
-        return new Response($calculatorService->render());
+        $expressionResult = $request->get('expression_result', 0);
+        return new Response($calculatorService->render($expressionResult));
     }
 
-    public function post(Request $request, CalculatorService $calculator): Response
+    public function post(Request $request, CalculatorService $calculator): RedirectResponse
     {
-        $calculation = $calculator->evaluate($request->get('calculation'));
-        $response = ['code' => 200, 'data' => $calculation];
+        $calculation = $calculator->evaluate($request->get('expression'));
 
-        if (is_null($calculation)) {
-            $response['code'] = 400;
+        $params = [];
+        if (!is_null($calculation)) {
+            $params = ['expression_result' => $calculation];
         }
 
-        return new Response(json_encode($response));
+        return $this->redirectToRoute('index', $params);
     }
 }
