@@ -55,6 +55,7 @@ class ExpressionParser
                 //                                10.5
                 // I don't believe this respects PEDMAS, it was an oversight
                 // by me when building out the DI container.
+                //
                 $tmp_op   = $operator;
                 $operator = $left;
                 $left     = $components[count($components) - 1];

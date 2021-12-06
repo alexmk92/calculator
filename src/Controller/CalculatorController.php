@@ -12,6 +12,7 @@ class CalculatorController
     {
         $input = "10 + 12 + 2 + 5 / 2 + 2 + 3 / 2 + 5 * 6 + 2";
         // $calculator = (new CalculatorService())->withStandardFunctions();
+        dd($calculator);
         dd($calculator->evaluate($input));
 
         return new Response(
