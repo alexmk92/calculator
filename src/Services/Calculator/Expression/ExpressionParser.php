@@ -12,6 +12,21 @@ class ExpressionParser
     private $calculator;
     /** @var IOperationContract[] $operatorList */
     private $operatorList = [];
+    /** @var float|Component $currentLeft */
+    private $currentLeft = null;
+    /** @var float|Component $currentRight */
+    private $currentRight = null;
+    /** @var IOperationContract $currentOperator */
+    private $currentOperator = null;
+    /** @var Component[] $components */
+    private $components = [];
+    /** @var Expression[]  $expressions */
+    private $expressions = [];
+    /** @var bool $foundExpression */
+    private $foundExpression = false;
+    /** @var array $symbolDictionary */
+
+    private $deferredComponents = [];
 
     public function __construct(ICalculatorContract $calculator)
     {
@@ -20,6 +35,8 @@ class ExpressionParser
         foreach ($this->calculator->getOperators() as $operator) {
             $this->operatorList[$operator->getSymbol()] = $operator;
         }
+
+        $this->symbolDictionary = array_flip(array_keys($this->operatorList));
     }
 
     /**
@@ -30,124 +47,254 @@ class ExpressionParser
      */
     public function parse(string $input)
     {
-        $expressionStrings = $this->extractExpressionStrings($input);
-        $expressions       = [];
+        $expressions = $this->extractExpressionsFromInput($input);
+        $this->shutdown();
 
-        /** @var Expression $previousExpression */
-        $previousExpression = null;
+        return $expressions;
+    }
 
-        foreach ($expressionStrings as $expressionIndex => $expressionString) {
-            $expressionString = trim(str_replace(['(', ')', ' '], '', $expressionString));
-            $components = $this->buildComponentListFromExpressionString($expressionString);
-            $expression = (new Expression())->setComponents(...$components);
+    /**
+     * Returns an array of expressions to be evaluated
+     *
+     * @param string $expressionString
+     *
+     * @return Expression[]
+     */
+    private function extractExpressionsFromInput(string $expressionString): array
+    {
+        $expressions     = &$this->expressions;
+        $components      = &$this->components;
+        $symbols         = implode('\\', array_keys($this->symbolDictionary));
+        $expressionParts = preg_split("/([\($symbols\)])/", $expressionString, -1, PREG_SPLIT_DELIM_CAPTURE);
 
-            if ($previousExpression !== null && $components[0]->getLeft() === null) {
-                $components[0]->setLeft($previousExpression->evaluate());
-                unset($expressions[$expressionIndex - 1]);
+        do {
+            $nextSymbol = array_shift($expressionParts);
+            // We don't care about parsing spaces!
+            if ($nextSymbol === '') {
+                continue;
             }
 
-            $expressions[]      = $expression;
-            $previousExpression = $expression;
+            if ($this->matchNewExpression($nextSymbol)) {
+                continue;
+            }
+
+            if ($this->matchLeftSymbol($nextSymbol)) {
+                continue;
+            }
+
+            if ($this->matchOperatorSymbol($nextSymbol)) {
+                continue;
+            }
+
+            // We don't care about continuing here as we want to attach the component
+            // if we have finished this part of the expression
+            $this->matchRightSymbol($nextSymbol);
+
+            // We've discovered a component!
+            if (is_numeric($this->currentLeft) && $this->currentOperator && is_numeric($this->currentRight)) {
+                $components[] = new Component((float) $this->currentLeft, $this->currentOperator, (float) $this->currentRight);
+                $this->resetPointers();
+            }
+        } while (count($expressionParts) > 0);
+
+        // Ensure we attach any in-flight and valid work.
+        $this->attachAdditionalComponentIfPresent();
+        // Ensure we build our expression list
+        if (!empty($this->components)) {
+            $expressions[] = (new Expression())->setComponents(...$this->components);
         }
 
         return $expressions;
     }
 
     /**
-     * Returns an array of components to be evaluated
+     * Determines if we've matched a new expression or not - if we have
+     * and there is a current component in-progress then we will defer
+     * that for processing later!
      *
-     * @param string $expressionString
-     * @param Component[] $components
+     * @param string|number $nextSymbol
+     * @return bool
      */
-    private function buildComponentListFromExpressionString(string $expressionString): array
+    private function matchNewExpression($nextSymbol): bool
     {
-        $components         = [];
-        $symbols            = implode('\\', array_keys($this->operatorList));
-        $expressionParts    = preg_split("/([$symbols])/", $expressionString,-1, PREG_SPLIT_DELIM_CAPTURE);
-        $possibleComponents = array_chunk($expressionParts, 3);
+        $components      = &$this->components;
+        $expressions     = &$this->expressions;
+        $foundExpression = &$this->foundExpression;
 
-        foreach ($possibleComponents as $possibleComponent) {
-            // If we don't have a left, operator and right - then continue
-            // unless we have 2, in which case we will use the previous
-            // component as the left node.
-            $componentParts = count($possibleComponent);
-            if ($componentParts < 2) {
-                if (is_numeric($possibleComponent[0])) {
-                    $components[] = new Component($possibleComponent[0]);
-                }
-                continue;
-            }
-
-            if ($componentParts === 3) {
-                $left     = is_numeric($possibleComponent[0]) ? $possibleComponent[0] : null;
-                $operator = is_numeric($possibleComponent[1]) ? $possibleComponent[0] : $possibleComponent[1];
-                $right    = is_numeric($possibleComponent[2]) ? $possibleComponent[2] : $possibleComponent[1];
-            } else if ($componentParts === 2) {
-                $left     = null;
-                $operator = is_numeric($possibleComponent[0]) ? $possibleComponent[1] : $possibleComponent[0];
-                $right    = is_numeric($possibleComponent[0]) ? $possibleComponent[0] : $possibleComponent[1];
-            }
-
-            $operatorInstance = $this->getOperatorInstance($operator);
-            $totalComponents  = count($components);
-            if (is_null($left) && $totalComponents > 0) {
-                $last_component = $components[count($components) - 1];
-                $component = new Component($last_component, $operatorInstance, $right);
-                unset($components[count($components) -1]);
-                $components = array_values($components);
-            } else {
-                $component = new Component($left, $operatorInstance, $right);
-            }
-
-            if (!is_null($component)) {
-                $components[] = $component;
-            }
+        if ($nextSymbol === '(') {
+            $foundExpression = true;
+            $this->deferCurrentComponent();
+            return true;
         }
 
-        return $components;
+        // Detect if there was a valid found expression, if not skip as this
+        // was some garbage input, like 3 + 3) - 2
+        if ($nextSymbol === ')' && $foundExpression) {
+            $this->attachAdditionalComponentIfPresent();
+            $this->processDeferredComponent();
+            $expressions[]   = (new Expression())->setComponents(...$components);
+            $components      = [];
+            $foundExpression = false;
+            return true;
+        } else if ($nextSymbol === ')') {
+            return true;
+        }
+
+        return false;
     }
 
-    protected function getOperatorInstance(string $operator): IOperationContract
+    /**
+     * @param string|number $nextSymbol
+     * @return bool
+     */
+    private function matchOperatorSymbol($nextSymbol): bool
+    {
+        if (isset($this->symbolDictionary[$nextSymbol])) {
+            if (is_null($this->currentOperator)) {
+                $this->currentOperator = $this->getOperatorInstance($nextSymbol);
+            } else {
+                $this->currentRight = $nextSymbol;
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @param string|number $nextSymbol
+     * @return bool
+     */
+    private function matchRightSymbol($nextSymbol): bool
+    {
+        if (is_numeric($nextSymbol) && !is_numeric($this->currentRight)) {
+            $this->currentRight .= $nextSymbol;
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Determines if we made a match on the left symbol for this expression.
+     *
+     * @param string|number $nextSymbol
+     * @return bool
+     */
+    private function matchLeftSymbol($nextSymbol): bool
+    {
+        $components = &$this->components;
+
+        if (empty($components) && !is_numeric($this->currentLeft) && isset($this->symbolDictionary[$nextSymbol])) {
+            $this->currentLeft = $nextSymbol;
+            return true;
+        }
+
+        if (is_numeric($nextSymbol) && is_null($this->currentOperator)) {
+            $this->currentLeft .= $nextSymbol;
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @return void
+     */
+    private function shutdown()
+    {
+        // Ensure our pointers are reset for the next parse.
+        $this->resetPointers();
+        // Release our expression and component state
+        $this->expressions = [];
+        $this->components  = [];
+    }
+
+    /**
+     * Defers the processing of this component as we've encountered an expression.
+     *
+     * @return void
+     */
+    private function deferCurrentComponent()
+    {
+        $this->deferredComponents[] = new Component($this->currentLeft, $this->currentOperator, $this->currentRight);
+        $this->resetPointers();
+    }
+
+    /**
+     * Resets all of the internal tracking pointers so we can track
+     * the next expression evaluation.
+     *
+     * @return void
+     */
+    private function resetPointers()
+    {
+        $this->currentLeft     = null;
+        $this->currentRight    = null;
+        $this->currentOperator = null;
+    }
+
+    /**
+     * When we get to an end of a sequence like 3 + 2 + 2 there is a carryover component of
+     * `null + 2` which we need to attach to the previous component in the tree.
+     *
+     * This allows us to evaulate in the order of (5 + 2) as a Component can either
+     * have a (float) or a (Component) as its left or right child.
+     *
+     * @param IOperationContract $currentOperator
+     * @param null|float $currentRight
+     * @return void
+     */
+    private function attachAdditionalComponentIfPresent()
+    {
+        $components = &$this->components;
+
+        if ($this->currentOperator && $this->currentRight) {
+            $left = count($components) ? $components[count($components) - 1] : 0;
+            if (!is_numeric($left)) {
+                unset($components[count($components)-1]);
+            }
+
+            $components[] = new Component($left, $this->currentOperator, (float) $this->currentRight);
+        }
+    }
+
+    /**
+     * Processes the next deferred component in the stack
+     */
+    private function processDeferredComponent(): bool
+    {
+        $component = array_shift($this->deferredComponents);
+        if (!$component instanceof Component) {
+            return true;
+        }
+
+        // A deferred component would have had a left value, but no right value
+        // as it only becomes deferred if we encounter a '('.  We will however
+        // be attaching this component to our previous one in the tree
+        // and will need to set the deferredComponents left value
+        // to our current right, so we can attach it to the
+        // previous node.
+        $this->currentOperator = $component->getOperator();
+        $this->currentRight    = $component->getLeft();
+        $this->attachAdditionalComponentIfPresent();
+        $this->resetPointers();
+
+        return true;
+    }
+
+    /**
+     * @param string $operator
+     * @return IOperationContract
+     * @throws Exception
+     */
+    private function getOperatorInstance(string $operator): IOperationContract
     {
         if (empty(array_keys($this->operatorList))) {
             throw new Exception("{$operator} is not supported by this calculator");
         }
 
         return $this->operatorList[$operator];
-    }
-
-    /**
-     * This calculator is pretty dumb as its implementing its own PEDMAS
-     * (pretty bad)...I wanted to demo Dependency Injection and
-     * services - so here's a really dumb implementation
-     * of evaluating brackets to give correct order
-     * of operations...each expression is extracted
-     * from the input string and returned for
-     * evaluation by its IOperationContract
-     *
-     * @param string $input
-     * @return string[]
-     * @throws Exception
-     */
-    protected function extractExpressionStrings(string $input): array
-    {
-        $symbols = implode('\\', array_keys($this->operatorList));
-        $input = trim($input, $symbols);
-
-        // Ensure we have the formula wrapped in brackets, unless
-        // it has already been wrapped.
-        if (strpos($input, '(', 0) !== 0) {
-            $input = "({$input})";
-        }
-
-        preg_match_all("(\(([ ]*\d+ ?[ ]*([\{$symbols}*][ ]*\d+[ ]*)*)\)|([ ]*[\+-\/*][ ]*\d+?[ ]*)?)", $input, $matches);
-
-        if (empty($matches)) {
-            throw new Exception("Empty expression detected");
-        }
-
-        return array_filter($matches[0], function ($match) {
-            return !empty($match);
-        });
     }
 }

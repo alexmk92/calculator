@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const buttons = document.querySelectorAll(".calculator input[type=button]");
   const expression = document.querySelector("#expression");
 
-  let initialized = display.value != 0;
+  let initialized = display.textContent != 0;
 
   const clearDisplay = () => {
     updateDisplay(0, true);

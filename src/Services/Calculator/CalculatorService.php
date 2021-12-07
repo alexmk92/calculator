@@ -45,7 +45,7 @@ class CalculatorService
 
     public function render(float $expressionResult = 0): string
     {
-        $controls = [[1, 2, 3], [4, 5, 6], [7, 8, 9], ['C', 0, '=']];
+        $controls = [[1, 2, 3], [4, 5, 6], [7, 8, 9], ['C', 0, '='], ['(', '.', ')']];
         $contents = $this->twig->render('calculator/index.html.twig', [
             'controls'  => $controls,
             'operators' => $this->getSupportedOperators(),

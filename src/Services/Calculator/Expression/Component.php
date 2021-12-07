@@ -104,4 +104,12 @@ class Component
     {
         return $this->right ?: 0;
     }
+
+    /**
+     * @return null|IOperationContract
+     */
+    public function getOperator(): ?IOperationContract
+    {
+        return $this->operator;
+    }
 }
