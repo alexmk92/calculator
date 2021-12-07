@@ -57,11 +57,7 @@ abstract class BaseCalculator implements ICalculatorContract
      */
     public function evaluate(string $input): float
     {
-        /** @var Expression[] $expression */
-        $expressions = $this->expressionParser->parse($input);
-
-        return array_reduce($expressions, function ($carry, $expression) {
-            return $carry += $expression->evaluate();
-        }, 0);
+        /** @var Expression $expression */
+        return $this->expressionParser->parse($input)->evaluate();
     }
 }

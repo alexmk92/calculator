@@ -43,7 +43,7 @@ final class StandardCalculatorTest extends KernelTestCase
 
     public function testCanCombineOperations(): void
     {
-        $this->assertEquals(27.5, $this->calculator->evaluate("(5 * 11) / 2"));
+        $this->assertEquals(27.5, $this->calculator->evaluate("5 * 11 / 2"));
     }
 
     public function testDivideByZeroReturnsError(): void
@@ -61,4 +61,5 @@ final class StandardCalculatorTest extends KernelTestCase
         // throw an excpetion (due to float being required)
         $this->assertEquals(0, $this->calculator->evaluate("hello + world"));
     }
+
 }

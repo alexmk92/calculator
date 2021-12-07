@@ -3,7 +3,9 @@
 namespace App\Services\Calculator\Expression;
 
 use App\Services\Calculator\ICalculatorContract;
+use App\Services\Calculator\Operators\AddOperator;
 use App\Services\Calculator\Operators\IOperationContract;
+use Doctrine\ORM\Query\Expr;
 use Exception;
 
 class ExpressionParser
@@ -18,19 +20,25 @@ class ExpressionParser
     private $currentRight = null;
     /** @var IOperationContract $currentOperator */
     private $currentOperator = null;
-    /** @var Component[] $components */
-    private $components = [];
-    /** @var Expression[]  $expressions */
-    private $expressions = [];
+    /** @var Expression  $expression */
+    private $expression = null;
     /** @var bool $foundExpression */
     private $foundExpression = false;
     /** @var array $symbolDictionary */
+    private $symbolDictionary = [];
+    /** @var IOperationContract $joinOperation */
+    private $joinOperation = null;
+    /** @var int $deferredComponentRefCount */
+    private $deferredComponentRefCount = -1;
+    /** @var int $smybolIndex */
+    private $symbolIndex = 0;
 
     private $deferredComponents = [];
 
     public function __construct(ICalculatorContract $calculator)
     {
         $this->calculator = $calculator;
+        $this->expression = new Expression();
 
         foreach ($this->calculator->getOperators() as $operator) {
             $this->operatorList[$operator->getSymbol()] = $operator;
@@ -43,38 +51,55 @@ class ExpressionParser
      * This is really messy, would optimise if I had more time, be kind :)
      *
      * @param string $input
-     * @return Expression[]
+     * @return Expression
      */
-    public function parse(string $input)
+    public function parse(string $input): Expression
     {
-        $expressions = $this->extractExpressionsFromInput($input);
+        $symbols          = implode('\\', array_keys($this->symbolDictionary));
+        $expressionString = str_replace(' ', '', $input);
+        $expressionParts  = preg_split("/([\($symbols\)])/", $expressionString, -1, PREG_SPLIT_DELIM_CAPTURE);
+        $expressionParts  = array_values(
+            array_filter($expressionParts, function ($part) {
+                return strlen(trim($part)) > 0;
+            })
+        );
+
+        $expression = $this->extractExpressionsFromInput($expressionParts);
         $this->shutdown();
 
-        return $expressions;
+        return $expression;
     }
 
     /**
      * Returns an array of expressions to be evaluated
      *
-     * @param string $expressionString
+     * @param string[] $expressionParts
      *
-     * @return Expression[]
+     * @return Expression
      */
-    private function extractExpressionsFromInput(string $expressionString): array
+    private function extractExpressionsFromInput(array $expressionParts): Expression
     {
-        $expressions     = &$this->expressions;
-        $components      = &$this->components;
-        $symbols         = implode('\\', array_keys($this->symbolDictionary));
-        $expressionParts = preg_split("/([\($symbols\)])/", $expressionString, -1, PREG_SPLIT_DELIM_CAPTURE);
-
-        do {
-            $nextSymbol = array_shift($expressionParts);
-            // We don't care about parsing spaces!
+        foreach ($expressionParts as $symbolIndex => $nextSymbol) {
+            // Set so we can globally track which symbol we are at in helpers.
+            $this->symbolIndex = $symbolIndex;
+            // Ensure we get rid of any space on this symbol so we can evaluate
+            // if it is numeric or not.
+            $nextSymbol = trim($expressionParts[$this->symbolIndex]);
+            // We don't care about parsing spaces!...this shouldn't happen, just a safety check
             if ($nextSymbol === '') {
                 continue;
             }
-
+            // If we start a new expression with ( then we up the reference count, this will
+            // push the current component state onto a stack to be evaluated later, this
+            // ensures order of operations is respected.
             if ($this->matchNewExpression($nextSymbol)) {
+                continue;
+            }
+            // Seek ahead to set the join operator for this expression, this allows us to
+            // control how the Expression class evaluates all Component combinations
+            // by default the AddOperator will always be used.
+            $prevSymbol = $expressionParts[max(0, $symbolIndex - 1)];
+            if ($this->matchJoinSymbol($nextSymbol, $prevSymbol)) {
                 continue;
             }
 
@@ -85,26 +110,22 @@ class ExpressionParser
             if ($this->matchOperatorSymbol($nextSymbol)) {
                 continue;
             }
-
             // We don't care about continuing here as we want to attach the component
             // if we have finished this part of the expression
-            $this->matchRightSymbol($nextSymbol);
-
+            if (!$this->matchRightSymbol($nextSymbol)) {
+                continue;
+            }
             // We've discovered a component!
             if (is_numeric($this->currentLeft) && $this->currentOperator && is_numeric($this->currentRight)) {
-                $components[] = new Component((float) $this->currentLeft, $this->currentOperator, (float) $this->currentRight);
+                $this->addComponent(new Component((float) $this->currentLeft, $this->currentOperator, (float) $this->currentRight));
                 $this->resetPointers();
             }
-        } while (count($expressionParts) > 0);
-
-        // Ensure we attach any in-flight and valid work.
-        $this->attachAdditionalComponentIfPresent();
-        // Ensure we build our expression list
-        if (!empty($this->components)) {
-            $expressions[] = (new Expression())->setComponents(...$this->components);
         }
+        // Ensure we attach any in-flight and valid work, this is normally once we've
+        // evaluated nested conditions and need to evaluate
+        $this->attachAdditionalComponentIfPresent();
 
-        return $expressions;
+        return $this->expression;
     }
 
     /**
@@ -117,26 +138,15 @@ class ExpressionParser
      */
     private function matchNewExpression($nextSymbol): bool
     {
-        $components      = &$this->components;
-        $expressions     = &$this->expressions;
-        $foundExpression = &$this->foundExpression;
-
         if ($nextSymbol === '(') {
-            $foundExpression = true;
             $this->deferCurrentComponent();
             return true;
         }
 
         // Detect if there was a valid found expression, if not skip as this
         // was some garbage input, like 3 + 3) - 2
-        if ($nextSymbol === ')' && $foundExpression) {
-            $this->attachAdditionalComponentIfPresent();
+        if ($nextSymbol === ')') {
             $this->processDeferredComponent();
-            $expressions[]   = (new Expression())->setComponents(...$components);
-            $components      = [];
-            $foundExpression = false;
-            return true;
-        } else if ($nextSymbol === ')') {
             return true;
         }
 
@@ -168,8 +178,32 @@ class ExpressionParser
      */
     private function matchRightSymbol($nextSymbol): bool
     {
-        if (is_numeric($nextSymbol) && !is_numeric($this->currentRight)) {
+        if (is_numeric($nextSymbol) && !is_numeric($this->currentOperator)) {
             $this->currentRight .= $nextSymbol;
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Tries to match the join symbol for the next component
+     *
+     * @param mixed $nextSymbol
+     * @return bool
+     */
+    private function matchJoinSymbol($nextSymbol, $prevSymbol): bool
+    {
+        if ($this->symbolIndex === 0) {
+            return false;
+        }
+
+        if (!in_array($prevSymbol, [')']) && is_null($this->currentOperator)) {
+            return false;
+        }
+
+        if (isset($this->symbolDictionary[$nextSymbol])) {
+            $this->joinOperation = $this->getOperatorInstance($nextSymbol);
             return true;
         }
 
@@ -184,9 +218,8 @@ class ExpressionParser
      */
     private function matchLeftSymbol($nextSymbol): bool
     {
-        $components = &$this->components;
-
-        if (empty($components) && !is_numeric($this->currentLeft) && isset($this->symbolDictionary[$nextSymbol])) {
+        // If this is the first symbol and its a '-' then we're starting with a negative number.
+        if ($this->symbolIndex === 0 && isset($this->symbolDictionary[$nextSymbol])) {
             $this->currentLeft = $nextSymbol;
             return true;
         }
@@ -208,17 +241,28 @@ class ExpressionParser
         $this->resetPointers();
         // Release our expression and component state
         $this->expressions = [];
-        $this->components  = [];
+        $this->symbolIndex = 0;
+
+        $this->deferredComponentRefCount = -1;
     }
 
     /**
      * Defers the processing of this component as we've encountered an expression.
+     * The reference count will always increase, to allow us to handle
+     * nested calculation such as 2 + (9*2 + (12/3) / (4 * 2))
+     *
+     * We will assert this as (18 + 4 / 8) + 2 = 20.5
      *
      * @return void
      */
     private function deferCurrentComponent()
     {
-        $this->deferredComponents[] = new Component($this->currentLeft, $this->currentOperator, $this->currentRight);
+        $this->deferredComponentRefCount++;
+
+        if ($this->currentLeft) {
+            $this->deferredComponents[] = new Component($this->currentLeft, $this->currentOperator, $this->currentRight);
+        }
+
         $this->resetPointers();
     }
 
@@ -248,15 +292,16 @@ class ExpressionParser
      */
     private function attachAdditionalComponentIfPresent()
     {
-        $components = &$this->components;
-
         if ($this->currentOperator && $this->currentRight) {
-            $left = count($components) ? $components[count($components) - 1] : 0;
-            if (!is_numeric($left)) {
-                unset($components[count($components)-1]);
+            $totalComponents = $this->expression->getComponentCount();
+            $left            = $totalComponents > 0 ? $this->expression->getComponentAtIndex($totalComponents - 1) : 0;
+
+            if ($left instanceof Component) {
+                $this->expression->removeComponentAtIndex($totalComponents - 1);
+                $left = $left->getValue();
             }
 
-            $components[] = new Component($left, $this->currentOperator, (float) $this->currentRight);
+            $this->addComponent(new Component($left, $this->currentOperator, (float) $this->currentRight));
         }
     }
 
@@ -265,11 +310,18 @@ class ExpressionParser
      */
     private function processDeferredComponent(): bool
     {
-        $component = array_shift($this->deferredComponents);
+        // $this->attachAdditionalComponentIfPresent();
+        // Take the last component from the stack
+        $ref = &$this->deferredComponentRefCount;
+        $component = isset($this->deferredComponents[$ref]) ? $this->deferredComponents[$ref] : null;
+        $ref--;
+
         if (!$component instanceof Component) {
+            $this->resetPointers();
             return true;
         }
 
+        $this->addComponent($component);
         // A deferred component would have had a left value, but no right value
         // as it only becomes deferred if we encounter a '('.  We will however
         // be attaching this component to our previous one in the tree
@@ -278,7 +330,6 @@ class ExpressionParser
         // previous node.
         $this->currentOperator = $component->getOperator();
         $this->currentRight    = $component->getLeft();
-        $this->attachAdditionalComponentIfPresent();
         $this->resetPointers();
 
         return true;
@@ -296,5 +347,18 @@ class ExpressionParser
         }
 
         return $this->operatorList[$operator];
+    }
+
+    /**
+     * Adds a new component to the expression.
+     *
+     * @param Component $component
+     * @return void
+     */
+    private function addComponent(Component $component)
+    {
+        $this->expression->addComponent($component, $this->joinOperation);
+        // Always default back to the add operator
+        $this->joinOperation = new AddOperator();
     }
 }
