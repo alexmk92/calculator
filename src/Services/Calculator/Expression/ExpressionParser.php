@@ -302,6 +302,11 @@ class ExpressionParser
             }
 
             $this->addComponent(new Component($left, $this->currentOperator, (float) $this->currentRight));
+        } else if ($this->currentLeft && is_null($this->currentOperator)) {
+            // If we just had an instance of a number, then attach a new component with this number
+            // as its right property.  The expression will then evaluate component by attaching
+            // the sum of previous components as the left child.
+            $this->addComponent(new Component(null, null, $this->currentLeft));
         }
     }
 

@@ -46,6 +46,12 @@ final class StandardCalculatorTest extends KernelTestCase
         $this->assertEquals(27.5, $this->calculator->evaluate("5 * 11 / 2"));
     }
 
+    public function testBracketPrecedenceIsRespected(): void
+    {
+        $this->assertEquals(10, $this->calculator->evaluate("(5*20)/10"));
+        $this->assertEquals(160, $this->calculator->evaluate("20*(2*4)"));
+    }
+
     public function testDivideByZeroReturnsError(): void
     {
         try {
