@@ -83,13 +83,26 @@ class Expression
             return 0;
         }
 
-        return array_reduce($this->components, function ($carry, $componentOperator) {
+        $value = 0;
+        return array_reduce($this->components, function ($carry, $componentOperator) use (&$value) {
             /** @var IOperationContract $operator */
             $operator  = $componentOperator['operator'];
             /** @var Component $component */
             $component = $componentOperator['component'];
 
-            return $operator->evaluate($carry, $component->getValue());
-        }, 0);
+            // If we had a carryover component, its likely it had a left value
+            // but no right value (as a '(' was encountered) in this situation
+            // we need to balance the equation so the left depends on the previous
+            // equation, we therefore return $carry as being the product
+            // of the components value (as we need to recalc)
+            if ($component->getRight() === null) {
+                $component->setRight($component->getLeft());
+                $component->setLeft($value);
+                return $component->getValue();
+            }
+
+            $value = $component->getValue();
+            return $operator->evaluate($carry, $value);
+        }, $value);
     }
 }

@@ -94,7 +94,7 @@ class Component
      */
     public function getLeft()
     {
-        return $this->left ?: 0;
+        return $this->left;
     }
 
     /**
@@ -102,7 +102,7 @@ class Component
      */
     public function getRight()
     {
-        return $this->right ?: 0;
+        return $this->right;
     }
 
     /**
