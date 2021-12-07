@@ -194,11 +194,11 @@ class ExpressionParser
      */
     private function matchJoinSymbol($nextSymbol, $prevSymbol): bool
     {
-        if ($this->symbolIndex === 0) {
+        if ($this->symbolIndex === 0 && $nextSymbol === '-') {
             return false;
         }
 
-        if (!in_array($prevSymbol, [')']) && is_null($this->currentOperator)) {
+        if ($this->symbolIndex > 0 && !in_array($prevSymbol, [')']) && is_null($this->currentOperator)) {
             return false;
         }
 
@@ -220,7 +220,11 @@ class ExpressionParser
     {
         // If this is the first symbol and its a '-' then we're starting with a negative number.
         if ($this->symbolIndex === 0 && isset($this->symbolDictionary[$nextSymbol])) {
-            $this->currentLeft = $nextSymbol;
+            if ($nextSymbol === '-') {
+                $this->currentLeft = $nextSymbol;
+            } else {
+                $this->joinOperator = $this->getOperatorInstance($nextSymbol);
+            }
             return true;
         }
 

@@ -6,6 +6,7 @@ use App\Services\Calculator\Operators\AddOperator;
 use App\Services\Calculator\Operators\DivideOperator;
 use App\Services\Calculator\Operators\MultiplyOperator;
 use App\Services\Calculator\Operators\PowOperator;
+use App\Services\Calculator\Operators\SqrtOperator;
 use App\Services\Calculator\Operators\SubtractOperator;
 
 class ScientificCalculator extends BaseCalculator
@@ -20,7 +21,8 @@ class ScientificCalculator extends BaseCalculator
             new DivideOperator(),
             new SubtractOperator(),
             new MultiplyOperator(),
-            new PowOperator()
+            new PowOperator(),
+            new SqrtOperator()
         ];
     }
 }
