@@ -8,11 +8,6 @@ I've never used Symfony before, so please go easy on me, the results are from a 
 
 I decided to have some fun with this and try to implement my own tree that would be able to parse mathematic equations, at first this sounded great but I quickly realised that trying to respect PEDMAS and parse out equations was a lot harder than I anticipated for my 4 hour timebox.
 
-Therefore this calculator will not work when:
-
-- Trying to perform sums like `(-4 + 2)` this will yield 6 as the `-` portion is omitted by my parser (maybe I'll fix this over the coming days)
-- Evaluating any sum of `(-N)` will yield `N` for the same reason as the above
-
 ## Cases covered:
 
 - The calculator is tolerant to divide by zero
