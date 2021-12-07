@@ -8,6 +8,8 @@ I've never used Symfony before, so please go easy on me, the results are from a 
 
 I decided to have some fun with this and try to implement my own tree that would be able to parse mathematic equations, at first this sounded great but I quickly realised that trying to respect PEDMAS and parse out equations was a lot harder than I anticipated for my 4 hour timebox.
 
+Be wary that order precedence isnt totally respected but I ran out of time
+
 ## Cases covered:
 
 - The calculator is tolerant to divide by zero
