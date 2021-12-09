@@ -2,45 +2,35 @@
 
 namespace App\Services\Calculator;
 
-use InvalidArgumentException;
-use Symfony\Component\HttpFoundation\Cookie;
-use Symfony\Component\HttpFoundation\Response;
-use Twig\Environment;
+use Symfony\Component\HttpFoundation\Exception\SessionNotFoundException;
+use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpFoundation\Session;
 
 class CalculatorHistoryService
 {
     /** @var string[] $history */
     private $history = [];
-    /** @var Environment $twig */
-    private $twig;
-    /** @var int $expires */
-    private $expires;
+    /** @var Session $session */
+    private $session;
 
     /**
      * By default, set a cookie that lasts for an hour.
      *
      * @param App\Services\Calculator\Environment $twig
-     * @param int $expires
      * @return void
      */
-    public function __construct(Environment $twig, $expires = 3600)
+    public function __construct(RequestStack $requestStack)
     {
-        $this->twig     = $twig;
-        $this->expires  = time() + $expires;
+        $this->session = $requestStack->getSession();
+        $this->history = json_decode($this->session->get('history', []), true);
     }
 
     /**
-     * Generates a new cookie so we can render the history client
-     * side.
-     *
-     * @return Cookie
-     * @throws InvalidArgumentException
+     * @return array
      */
-    private function setHistoryCookie(): Cookie
+    public function getHistory(): array
     {
-        return Cookie::create('calculationHistory')
-            ->withValue(json_encode($this->history))
-            ->withExpires($this->expires);
+        return $this->history;
     }
 
     /**
@@ -48,23 +38,39 @@ class CalculatorHistoryService
      * @param float $result
      * @return void
      */
-    public function setValue(string $expression, float $result)
+    public function record(string $expression, float $result): void
     {
         $this->history[] = [
             'expression' => $expression,
             'result' => $result
         ];
+
+        $this->updateSession();
     }
 
     /**
-     * @return mixed
-     * @throws InvalidArgumentException
+     * @return void
      */
-    public function render()
+    public function clear(?int $index = null): void
     {
-        $this->response->headers->setCookie($this->setHistoryCookie());
-        return $this->twig->render('calculator/history.twig.html', [
+        $history = &$this->history;
 
-        ]);
+        if (is_null($index)) {
+            $history = [];
+        } else if (isset($history[$index])) {
+            unset($history[$index]);
+            $history = array_values($history);
+        }
+
+        $this->updateSession();
+    }
+
+    /**
+     * @return void
+     * @throws SessionNotFoundException
+     */
+    private function updateSession(): void
+    {
+        $this->session->set('history', json_encode($this->history));
     }
 }

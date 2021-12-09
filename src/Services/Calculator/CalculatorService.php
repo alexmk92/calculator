@@ -15,7 +15,7 @@ class CalculatorService
     private $calculator;
 
     /** @var CalculatorHistoryService $calculatorHistory */
-    private $calculatorHistory;
+    private $calculatorHistoryService;
 
     public function __construct(ICalculatorContract $calculator, Environment $twig)
     {
@@ -25,13 +25,12 @@ class CalculatorService
 
     /**
      * @required
-     * @param CalculatorHistoryService $calculatorHistory
+     * @param CalculatorHistoryService $calculatorHistoryService
      * @return void
      */
-    public function setCalculatorHistory(CalculatorHistoryService $calculatorHistory)
+    public function setCalculatorHistory(CalculatorHistoryService $calculatorHistoryService)
     {
-        $this->calculatorHistory = $calculatorHistory;
-        dd('here');
+        $this->calculatorHistoryService = $calculatorHistoryService;
     }
 
     /**
@@ -49,27 +48,26 @@ class CalculatorService
     public function evaluate(string $input): ?float
     {
         try {
-            $result = $this->calculator->evaluate($input);
+            $value = $this->calculator->evaluate($input);
         } catch (Exception $e) {
-            // This is divide by zero
-            $result = $e->getMessage();
+            $value = 0;
         } catch (TypeError $e) {
-            $result = 0;
+            $value = 0;
         }
 
-        $this->calculatorHistory->setValue($input, $result);
-
-        return 0;
+        $this->calculatorHistoryService->record($input, $value);
+        return $value;
     }
 
     public function render(float $expressionResult = 0): string
     {
         $controls = [[1, 2, 3], [4, 5, 6], [7, 8, 9], ['C', 0, '='], ['(', '.', ')']];
-        $contents = $this->twig->render('calculator/index.html.twig', [
+
+        $contents = $this->twig->render('calculator/calculator.html.twig', [
             'controls'  => $controls,
             'operators' => $this->getSupportedOperators(),
             'result'    => $expressionResult,
-            'history'   => $this->calculatorHistory->render()
+            'history'   => $this->calculatorHistoryService->getHistory()
         ]);
 
         return $contents;
