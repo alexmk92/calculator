@@ -17,6 +17,10 @@ body {
   gap: 1.5rem;
   font-family: Arial;
   border-radius: 5%;
+  box-shadow: 0px 4px 5px #000000;
+  border: 1px solid rgb(66, 52, 128);
+  position: relative;
+  z-index: 2;
 }
 
 .calculator .controls {
@@ -57,4 +61,42 @@ body {
   border: none;
   color: white;
   font-size: 1.25em;
+}
+
+.calculator-panel {
+  display: flex;
+  flex-direction: row;
+  position: relative;
+  justify-content: center;
+}
+
+#history {
+  position: relative;
+  max-height: 400px;
+  height: 400px;
+  top: 5px;
+  width: 200px;
+  overflow-y: scroll;
+  list-style: none;
+  font-family: Arial;
+  background: rgb(31, 19, 53);
+  margin-left: -5px;
+  padding: 0;
+  z-index: 1;
+}
+
+#history li {
+  border-bottom: 1px solid rgb(66, 52, 128);
+  padding: 10px 10px;
+  text-align: right;
+  color: #ccc;
+}
+
+#history li:hover {
+  background: rgb(66, 52, 128);
+}
+
+#history li h2 {
+  margin: 2px;
+  color: rgb(155, 117, 47);
 }

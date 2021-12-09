@@ -5,8 +5,12 @@
 {% endblock %}
 
 {% block body %}
-    <div>
-        {% block calculator %}{% endblock %}
-        {% block calculatorHistory %}{% endblock %}
+    <div class="calculator-panel">
+        <div>
+            {% include 'calculator/calculator.html.twig' %}
+        </div>
+        <div>
+            {% include 'calculator/history.html.twig' %}
+        </div>
     </div>
 {% endblock %}

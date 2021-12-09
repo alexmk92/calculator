@@ -22,7 +22,7 @@ class CalculatorHistoryService
     public function __construct(RequestStack $requestStack)
     {
         $this->session = $requestStack->getSession();
-        $this->history = json_decode($this->session->get('history', []), true);
+        $this->history = json_decode($this->session->get('history', '{}'), true);
     }
 
     /**

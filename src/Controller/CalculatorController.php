@@ -10,34 +10,25 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
-use Twig\Error\LoaderError;
-use Twig\Error\SyntaxError;
-use Twig\Error\RuntimeError;
 
 class CalculatorController extends AbstractController
 {
     /** @var CalculatorService $calculatorService */
     private $calculatorService;
-    /** @var CalculatorHistoryService $calculatorHistoryService */
-    private $calculatorHistoryService;
-    /** @var RequestStack $requestStack */
-    private $requestStack;
 
-    public function __construct(CalculatorService $calculatorService, CalculatorHistoryService $calculatorHistoryService, RequestStack $requestStack)
+    public function __construct(CalculatorService $calculatorService, RequestStack $requestStack)
     {
-        $this->calculatorService        = $calculatorService;
-        $this->calculatorHistoryService = $calculatorHistoryService;
-        $this->requestStack             = $requestStack;
+        $this->calculatorService = $calculatorService;
+        $this->requestStack      = $requestStack;
     }
 
     /**
      * @param Request $request
      * @return Response
      */
-    public function index(Request $request): Response
+    public function index(): Response
     {
-        $expressionResult = $request->get('expression_result', 0);
-        return new Response($this->calculatorService->render($expressionResult));
+        return new Response($this->calculatorService->render());
     }
 
     /**

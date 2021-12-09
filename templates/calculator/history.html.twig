@@ -1,5 +1,8 @@
-{% extends 'calculator/index.html.twig' %}
-
-{% block calculatorHistory %}
-    <div>HI world</div>
-{% endblock %}
+<ul id='history'>
+{% for calculation in history %}
+    <li>
+        <span class='expression'>{{ calculation.expression }}</span>
+        <h2>{{ calculation.result }}</h2>
+    </li>
+{% endfor %}
+</ul>

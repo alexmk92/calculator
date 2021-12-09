@@ -45,6 +45,10 @@ class CalculatorService
         }, $this->calculator->getOperators());
     }
 
+    /**
+     * @param string $input
+     * @return null|float
+     */
     public function evaluate(string $input): ?float
     {
         try {
@@ -59,15 +63,17 @@ class CalculatorService
         return $value;
     }
 
-    public function render(float $expressionResult = 0): string
+    public function render(): string
     {
-        $controls = [[1, 2, 3], [4, 5, 6], [7, 8, 9], ['C', 0, '='], ['(', '.', ')']];
+        $controls   = [[1, 2, 3], [4, 5, 6], [7, 8, 9], ['C', 0, '='], ['(', '.', ')']];
+        $history    = array_reverse($this->calculatorHistoryService->getHistory());
+        $lastResult = empty($history) ? 0 : $history[0]['result'];
 
-        $contents = $this->twig->render('calculator/calculator.html.twig', [
+        $contents = $this->twig->render('calculator/index.html.twig', [
             'controls'  => $controls,
             'operators' => $this->getSupportedOperators(),
-            'result'    => $expressionResult,
-            'history'   => $this->calculatorHistoryService->getHistory()
+            'result'    => $lastResult,
+            'history'   => $history
         ]);
 
         return $contents;
