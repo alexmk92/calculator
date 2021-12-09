@@ -30,7 +30,7 @@ services:
 
   # Use a standard calculator service
   App\Services\Calculator\ICalculatorContract: '@App\Services\Calculator\StandardCalculator'
-  # App\Services\Calculator\ICalculatorContract: '@App\Services\Calculator\ScientificCalculator'
+  App\Services\Calculator\ICalculatorContract $scientificCalculator: '@App\Services\Calculator\ScientificCalculator'
 
   App\Services\Calculator\CalculatorService:
     autowire: true

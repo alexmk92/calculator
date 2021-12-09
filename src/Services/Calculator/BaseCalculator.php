@@ -13,12 +13,9 @@ abstract class BaseCalculator implements ICalculatorContract
     /** @var ExpressionParser $expressionParser */
     private $expressionParser;
 
-    /**
-     * @required
-     */
-    public function setExpressionParser(ExpressionParser $expressionParser)
+    public function __construct()
     {
-        $this->expressionParser = $expressionParser;
+        $this->expressionParser = new ExpressionParser($this);
     }
 
     /**

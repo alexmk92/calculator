@@ -4,29 +4,40 @@
 // so that I could bind the scinetific calculator to it just for these
 // unit tests
 
-// use App\Services\Calculator\Expression\ExpressionParser;
-// use App\Services\Calculator\ICalculatorContract;
-// use App\Services\Calculator\ScientificCalculator;
-// use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use App\Services\Calculator\Expression\ExpressionParser;
+use App\Services\Calculator\ICalculatorContract;
+use App\Services\Calculator\ScientificCalculator;
+use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
-// final class ScientificCalculatorTest extends KernelTestCase
-// {
-//     /** @var ScientificCalculator $calculator */
-//     protected $calculator;
+final class ScientificCalculatorTest extends KernelTestCase
+{
+    /** @var ScientificCalculator $calculator */
+    protected $calculator;
 
-//     public function setup(): void
-//     {
-//         static::bootKernel();
+    public function setup(): void
+    {
+        static::bootKernel();
 
-//         $container = static::$kernel->getContainer();
+        $this->calculator = static::getContainer()->get(ScientificCalculator::class);
+    }
 
-//         $scientificCalculator = $container->get(ScientificCalculator::class);
-//         $container->set(ICalculatorContract::class, $scientificCalculator);
-//         $this->calculator = $scientificCalculator;
-//     }
+    public function testCanRaiseNumberToExponent()
+    {
+        $this->assertEquals(81, $this->calculator->evaluate('9^2'));
+    }
 
-//     public function testCanRaiseNumberToExponent()
-//     {
-//         $this->assertEquals(81, $this->calculator->evaluate('9^2'));
-//     }
-// }
+    public function testCanEvaluateMultipleExpressionsInBrackets()
+    {
+        $this->assertEquals(91, $this->calculator->evaluate('9^2+(2*5)'));
+    }
+
+    public function testCanFindTheSquareRootOfANumber()
+    {
+        $this->assertEquals(9, $this->calculator->evaluate('_81'));
+    }
+
+    public function testCanFindTheSquareRootOfAGroupOfNumbers()
+    {
+        $this->assertEquals(9, $this->calculator->evaluate('_(9*9)'));
+    }
+}
