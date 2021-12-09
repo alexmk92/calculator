@@ -2,29 +2,49 @@
 
 namespace App\Controller;
 
+use App\Services\Calculator\CalculatorHistoryService;
 use App\Services\Calculator\CalculatorService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Exception\BadRequestException;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
 
 class CalculatorController extends AbstractController
 {
-    public function index(Request $request, CalculatorService $calculatorService): Response
+    /** @var CalculatorService $calculatorService */
+    private $calculatorService;
+
+    public function __construct(CalculatorService $calculatorService, RequestStack $requestStack)
     {
-        $expressionResult = $request->get('expression_result', 0);
-        return new Response($calculatorService->render($expressionResult));
+        $this->calculatorService = $calculatorService;
+        $this->requestStack      = $requestStack;
     }
 
-    public function post(Request $request, CalculatorService $calculator): RedirectResponse
+    /**
+     * @param Request $request
+     * @return Response
+     */
+    public function index(): Response
     {
-        $calculation = $calculator->evaluate($request->get('expression'));
+        return new Response($this->calculatorService->render());
+    }
 
-        $params = [];
-        if (!is_null($calculation)) {
-            $params = ['expression_result' => $calculation];
+    /**
+     * @param Request $request
+     * @return RedirectResponse
+     */
+    public function post(Request $request): RedirectResponse
+    {
+        $expression = $request->get('expression', 0);
+        // Could do more rigorous evaluation here with a custom validator
+        // such as checking mathematic symbols and no non-numeric
+        // characters are present.
+        if (!empty($expression)) {
+            $this->calculatorService->evaluate($expression);
         }
 
-        return $this->redirectToRoute('index', $params);
+        return $this->redirectToRoute('index');
     }
 }

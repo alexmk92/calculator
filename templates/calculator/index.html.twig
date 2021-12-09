@@ -5,25 +5,12 @@
 {% endblock %}
 
 {% block body %}
-    <form class='calculator' action='{{ path('calculate') }}' method='POST'>
-        <div class="display">{{ result }}</div>
-        <input id="expression" type="hidden" name="expression" />
-        <div class='controls'>
-            <div class='container'>
-    {% for controlGroup in controls %}
-            <div>
-        {% for controlCell in controlGroup %}
-                <input type="{{ controlCell != '='  ? 'button' : 'submit' }}" value="{{ controlCell }}" />
-        {% endfor %}
-            </div>
-    {% endfor %}
-            </div>
-            <div class='container'>
-    {% for operator in operators %}
-                <input type="button" value="{{ operator }}" />
-    {% endfor %}
-            </div>
+    <div class="calculator-panel">
+        <div>
+            {% include 'calculator/calculator.html.twig' %}
         </div>
-    </form>
-
+        <div>
+            {% include 'calculator/history.html.twig' %}
+        </div>
+    </div>
 {% endblock %}

@@ -14,10 +14,23 @@ class CalculatorService
     /** @var ICalculatorContract $calculator */
     private $calculator;
 
+    /** @var CalculatorHistoryService $calculatorHistory */
+    private $calculatorHistoryService;
+
     public function __construct(ICalculatorContract $calculator, Environment $twig)
     {
         $this->calculator = $calculator;
         $this->twig       = $twig;
+    }
+
+    /**
+     * @required
+     * @param CalculatorHistoryService $calculatorHistoryService
+     * @return void
+     */
+    public function setCalculatorHistory(CalculatorHistoryService $calculatorHistoryService)
+    {
+        $this->calculatorHistoryService = $calculatorHistoryService;
     }
 
     /**
@@ -32,24 +45,35 @@ class CalculatorService
         }, $this->calculator->getOperators());
     }
 
+    /**
+     * @param string $input
+     * @return null|float
+     */
     public function evaluate(string $input): ?float
     {
         try {
-            return $this->calculator->evaluate($input);
+            $value = $this->calculator->evaluate($input);
         } catch (Exception $e) {
-            return 0;
+            $value = 0;
         } catch (TypeError $e) {
-            return 0;
+            $value = 0;
         }
+
+        $this->calculatorHistoryService->record($input, $value);
+        return $value;
     }
 
-    public function render(float $expressionResult = 0): string
+    public function render(): string
     {
-        $controls = [[1, 2, 3], [4, 5, 6], [7, 8, 9], ['C', 0, '='], ['(', '.', ')']];
+        $controls   = [[1, 2, 3], [4, 5, 6], [7, 8, 9], ['C', 0, '='], ['(', '.', ')']];
+        $history    = array_reverse($this->calculatorHistoryService->getHistory());
+        $lastResult = empty($history) ? 0 : $history[0]['result'];
+
         $contents = $this->twig->render('calculator/index.html.twig', [
             'controls'  => $controls,
             'operators' => $this->getSupportedOperators(),
-            'result'    => $expressionResult
+            'result'    => $lastResult,
+            'history'   => $history
         ]);
 
         return $contents;
