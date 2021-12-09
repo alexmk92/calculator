@@ -198,7 +198,11 @@ class ExpressionParser
             return false;
         }
 
-        if ($this->symbolIndex > 0 && !in_array($prevSymbol, [')']) && is_null($this->currentOperator)) {
+        // If the previous symbol was a ), we know the next symbol will be a joining
+        // operator - we also have a valid operator if a new component has been added
+        // to our component array, this happens when the left node is null.
+        $valid_previous = in_array($prevSymbol, [')']) || empty($this->currentLeft);
+        if ($this->symbolIndex > 0 && !$valid_previous && is_null($this->currentOperator)) {
             return false;
         }
 
