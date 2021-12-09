@@ -14,10 +14,24 @@ class CalculatorService
     /** @var ICalculatorContract $calculator */
     private $calculator;
 
+    /** @var CalculatorHistoryService $calculatorHistory */
+    private $calculatorHistory;
+
     public function __construct(ICalculatorContract $calculator, Environment $twig)
     {
         $this->calculator = $calculator;
         $this->twig       = $twig;
+    }
+
+    /**
+     * @required
+     * @param CalculatorHistoryService $calculatorHistory
+     * @return void
+     */
+    public function setCalculatorHistory(CalculatorHistoryService $calculatorHistory)
+    {
+        $this->calculatorHistory = $calculatorHistory;
+        dd('here');
     }
 
     /**
@@ -35,12 +49,17 @@ class CalculatorService
     public function evaluate(string $input): ?float
     {
         try {
-            return $this->calculator->evaluate($input);
+            $result = $this->calculator->evaluate($input);
         } catch (Exception $e) {
-            return 0;
+            // This is divide by zero
+            $result = $e->getMessage();
         } catch (TypeError $e) {
-            return 0;
+            $result = 0;
         }
+
+        $this->calculatorHistory->setValue($input, $result);
+
+        return 0;
     }
 
     public function render(float $expressionResult = 0): string
@@ -49,7 +68,8 @@ class CalculatorService
         $contents = $this->twig->render('calculator/index.html.twig', [
             'controls'  => $controls,
             'operators' => $this->getSupportedOperators(),
-            'result'    => $expressionResult
+            'result'    => $expressionResult,
+            'history'   => $this->calculatorHistory->render()
         ]);
 
         return $contents;
