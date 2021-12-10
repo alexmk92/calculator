@@ -3,31 +3,50 @@
 namespace App\Services\Calculator\Expression;
 
 use App\Services\Calculator\Operators\AddOperator;
+use App\Services\Calculator\Operators\DivideOperator;
 use App\Services\Calculator\Operators\IOperationContract;
 
 class Expression
 {
     /** @var [Component, IOperationContract][] $components */
-    private $components;
+    private $components = [];
 
     /**
      * Adds a new component with the defined join operator, by default this
      * will be the AddOperator.
      *
+     * If this was a deferred component (caused by a "(" being detected in the parser,
+     * then we will insert this component higher up the tree if the join operator
+     * is a divide operation)
+     *
      * @param Component $component
      * @param IOperationContract $joinOperator
-     * @return void
+     * @param bool $isDeferredComponent
+     * @return Component
      */
-    public function addComponent(Component $component, ?IOperationContract $joinOperator = null)
+    public function addComponent(Component $component, ?IOperationContract $joinOperator = null, bool $isDeferredComponent = false): Component
     {
         if (!$joinOperator) {
             $joinOperator = new AddOperator();
         }
 
-        $this->components[] = [
+        $component->setJoinOperator($joinOperator);
+
+        $component = [
             'component' => $component,
             'operator'  => $joinOperator
         ];
+
+        $isDivideOperator = $joinOperator instanceof DivideOperator;
+        $totalComponents  = count($this->components);
+
+        if ($isDeferredComponent && $isDivideOperator && $totalComponents >= 1) {
+            array_splice($this->components, $totalComponents - 1, 0, $component);
+        } else {
+            $this->components[] = $component;
+        }
+
+        return $component['component'];
     }
 
     /**
@@ -50,6 +69,21 @@ class Expression
      * @param int $index
      * @return null|Component
      */
+    public function getComponent(int $id): ?Component
+    {
+        foreach ($this->components as $component) {
+            if ($component['component']->getId() === $id) {
+                return $component['component'];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param int $index
+     * @return null|Component
+     */
     public function getComponentAtIndex(int $index): ?Component
     {
         if (isset($this->components[$index])) {
@@ -60,15 +94,23 @@ class Expression
     }
 
     /**
+     * Attempts to remove the component from the expression, either
+     * an int (the index which was removed) is returned, or null
+     * if the component was not discoverd.
+     *
      * @param int $index
-     * @return void
+     * @return int|null
      */
-    public function removeComponentAtIndex(int $index)
+    public function removeComponent(int $id): ?int
     {
-        if (isset($this->components[$index])) {
-            unset($this->components[$index]);
-            $this->components = array_values($this->components);
+        foreach ($this->components as $idx => $component) {
+            if ($component['component']->getId() === $id) {
+                unset($this->components[$idx]);
+                return $idx;
+            }
         }
+
+        return null;
     }
 
     /**
@@ -83,7 +125,6 @@ class Expression
             return 0;
         }
 
-        $value = 0;
         return array_reduce($this->components, function ($carry, $componentOperator) use (&$value) {
             /** @var IOperationContract $operator */
             $operator  = $componentOperator['operator'];
@@ -103,6 +144,6 @@ class Expression
 
             $value = $component->getValue();
             return $operator->evaluate($carry, $value);
-        }, $value);
+        }, 0);
     }
 }

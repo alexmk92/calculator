@@ -5,7 +5,6 @@ namespace App\Services\Calculator\Expression;
 use App\Services\Calculator\ICalculatorContract;
 use App\Services\Calculator\Operators\AddOperator;
 use App\Services\Calculator\Operators\IOperationContract;
-use Doctrine\ORM\Query\Expr;
 use Exception;
 
 class ExpressionParser
@@ -20,20 +19,16 @@ class ExpressionParser
     private $currentRight = null;
     /** @var IOperationContract $currentOperator */
     private $currentOperator = null;
-    /** @var Expression  $expression */
+    /** @var Expression $expression */
     private $expression = null;
-    /** @var bool $foundExpression */
-    private $foundExpression = false;
     /** @var array $symbolDictionary */
     private $symbolDictionary = [];
     /** @var IOperationContract $joinOperation */
     private $joinOperation = null;
-    /** @var int $deferredComponentRefCount */
-    private $deferredComponentRefCount = -1;
     /** @var int $smybolIndex */
     private $symbolIndex = 0;
-
-    private $deferredComponents = [];
+    /** @var int[]|null $deferredComponent */
+    private $deferredComponentIndexes = [];
 
     public function __construct(ICalculatorContract $calculator)
     {
@@ -250,8 +245,6 @@ class ExpressionParser
         // Release our expression and component state
         $this->expressions = [];
         $this->symbolIndex = 0;
-
-        $this->deferredComponentRefCount = -1;
     }
 
     /**
@@ -265,11 +258,18 @@ class ExpressionParser
      */
     private function deferCurrentComponent()
     {
-        $this->deferredComponentRefCount++;
-
-        if ($this->currentLeft) {
-            $this->deferredComponents[] = new Component($this->currentLeft, $this->currentOperator, $this->currentRight);
+        // In this case, it's likely we're nesting expression such as
+        // 7 + (1/2*(1+3)) the (1+3) would be evaluated and no
+        // inflight expression is in place...in this case
+        // we will push the previous expression to the
+        // deferred components array.
+        if (!$this->currentLeft) {
+            $this->deferredComponentIndexes[] = $this->getCurrentComponent()->getId();
+            return false;
         }
+
+        $component = $this->addComponent(new Component($this->currentLeft, $this->currentOperator, $this->currentRight));
+        $this->deferredComponentIndexes[] = $component->getId();
 
         $this->resetPointers();
     }
@@ -305,7 +305,7 @@ class ExpressionParser
             $left            = $totalComponents > 0 ? $this->expression->getComponentAtIndex($totalComponents - 1) : 0;
 
             if ($left instanceof Component) {
-                $this->expression->removeComponentAtIndex($totalComponents - 1);
+                $this->expression->removeComponent($left->getId());
                 $left = $left->getValue();
             }
 
@@ -319,31 +319,58 @@ class ExpressionParser
     }
 
     /**
+     * Returns the current active component.
+     * @return Component
+     */
+    private function getCurrentComponent(): Component
+    {
+        $component = null;
+
+        if (is_null($this->currentLeft)) {
+            $totalComponents = $this->expression->getComponentCount();
+            $component = $this->expression->getComponentAtIndex($totalComponents - 1);
+        }
+
+        if (is_null($component)) {
+            $component = new Component($this->currentLeft, $this->currentOperator, $this->currentRight);
+            dd($component);
+        }
+
+        return $component;
+    }
+
+    /**
      * Processes the next deferred component in the stack
      */
     private function processDeferredComponent(): bool
     {
-        // $this->attachAdditionalComponentIfPresent();
-        // Take the last component from the stack
-        $ref = &$this->deferredComponentRefCount;
-        $component = isset($this->deferredComponents[$ref]) ? $this->deferredComponents[$ref] : null;
-        $ref--;
+        // Find the next component
+        $nextDeferredId    = array_pop($this->deferredComponentIndexes);
+        $deferredComponent = $this->expression->getComponent($nextDeferredId);
 
-        if (!$component instanceof Component) {
+        if (!$deferredComponent instanceof Component) {
             $this->resetPointers();
             return true;
         }
-
-        $this->addComponent($component);
+        $currentComponent = $this->getCurrentComponent();
+        // To ensure we're always building the tree correctly, we need to ensure
+        // that we evaluate the left side of an expressions node to be its current
+        // value and then attach the next node in the sequence to the right node.
+        // we also need to override the operator to be the current components
+        // joining operator so that we don't perform the wrong assertion
+        if ($deferredComponent->getRight() !== null) {
+            $deferredComponent->setLeft($deferredComponent->getValue());
+            $deferredComponent->setOperator($currentComponent->getJoinOperator());
+            $deferredComponent->setRight(null);
+        }
         // A deferred component would have had a left value, but no right value
         // as it only becomes deferred if we encounter a '('.  We will however
         // be attaching this component to our previous one in the tree
         // and will need to set the deferredComponents left value
         // to our current right, so we can attach it to the
         // previous node.
-        $this->currentOperator = $component->getOperator();
-        $this->currentRight    = $component->getLeft();
-        $this->resetPointers();
+        $deferredComponent->setRight($currentComponent);
+        $this->expression->removeComponent($nextDeferredId+1);
 
         return true;
     }
@@ -366,12 +393,15 @@ class ExpressionParser
      * Adds a new component to the expression.
      *
      * @param Component $component
-     * @return void
+     * @param bool $isDeferredComponent
+     *
+     * @return Component
      */
-    private function addComponent(Component $component)
+    private function addComponent(Component $component, bool $isDeferredComponent = false): Component
     {
-        $this->expression->addComponent($component, $this->joinOperation);
+        $component = $this->expression->addComponent($component, $this->joinOperation, $isDeferredComponent);
         // Always default back to the add operator
         $this->joinOperation = new AddOperator();
+        return $component;
     }
 }

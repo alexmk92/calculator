@@ -2,10 +2,8 @@
 
 namespace App\Controller;
 
-use App\Services\Calculator\CalculatorHistoryService;
 use App\Services\Calculator\CalculatorService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\Exception\BadRequestException;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;

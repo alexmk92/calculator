@@ -2,26 +2,36 @@
 
 namespace App\Services\Calculator\Expression;
 
+use App\Services\Calculator\Operators\AddOperator;
 use App\Services\Calculator\Operators\IOperationContract;
 
 class Component
 {
+    private static $id_seq = -1;
+    /** @var int $id  */
+    private $id;
     /** @var Component|float $left */
     private $left;
     /** @var Component|float $right */
     private $right;
     /** @var IOperationContract $operator */
     private $operator;
+    /** @var IOperationContract $joinOperator */
+    private $joinOperator;
 
     /**
      * @param float|Expression $value
      * @return void
      */
-    public function __construct($left = null, ?IOperationContract $operator = null, $right = null)
+    public function __construct($left = null, ?IOperationContract $operator = null, $right = null, ?IOperationContract $joinOperator = null)
     {
+        static::$id_seq++;
+
         $this->setLeft($left);
         $this->setRight($right);
         $this->setOperator($operator);
+        $this->setJoinOperator($joinOperator);
+        $this->id = static::$id_seq;
     }
 
     /**
@@ -111,5 +121,36 @@ class Component
     public function getOperator(): ?IOperationContract
     {
         return $this->operator;
+    }
+
+    /**
+     * @return int
+     */
+    public function getId(): int
+    {
+        return $this->id;
+    }
+
+    /**
+     * Sets the join operator which other expressions can be concatenated to
+     * with this operation.
+     *
+     * @return void
+     */
+    public function setJoinOperator(?IOperationContract $operator = null)
+    {
+        if (is_null($operator)) {
+            $operator = new AddOperator();
+        }
+
+        $this->joinOperator = $operator;
+    }
+
+    /**
+     * @return IOperationContract
+     */
+    public function getJoinOperator(): IOperationContract
+    {
+        return $this->joinOperator;
     }
 }
