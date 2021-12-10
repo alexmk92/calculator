@@ -68,4 +68,8 @@ final class StandardCalculatorTest extends KernelTestCase
         $this->assertEquals(0, $this->calculator->evaluate("hello + world"));
     }
 
+    public function testComplexExpressionCanBeAsserted(): void
+    {
+        $this->assertEquals(-25.333, round($this->calculator->evaluate("(50/3)+2*(6+5-(4*8))"),3));
+    }
 }

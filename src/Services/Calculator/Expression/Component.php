@@ -93,7 +93,7 @@ class Component
         // If someone entered something like +33 on its own, then this will evaluate to
         // either 0 or the value of left/right
         if (is_null($this->operator)) {
-            return $this->getLeft() ?: $this->getRight();
+            return $this->getLeft() ?: $this->getRight() ?: 0;
         }
 
         return $this->operator->evaluate($left, $right);

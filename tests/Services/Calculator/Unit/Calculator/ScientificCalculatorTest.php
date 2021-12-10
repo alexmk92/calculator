@@ -40,4 +40,14 @@ final class ScientificCalculatorTest extends KernelTestCase
     {
         $this->assertEquals(9, $this->calculator->evaluate('_(9*9)'));
     }
+
+    public function testCanMultiplyByTheSquareRootOfANumber()
+    {
+        $this->assertEquals(81, $this->calculator->evaluate('_(9*9)*9'));
+    }
+
+    public function testCanMixSquareRootAndPowFunctionsInSingleExpression()
+    {
+        $this->assertEquals(729, $this->calculator->evaluate('_(9*9)*9^2'));
+    }
 }

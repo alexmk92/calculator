@@ -32,21 +32,17 @@ class Expression
 
         $component->setJoinOperator($joinOperator);
 
-        $component = [
-            'component' => $component,
-            'operator'  => $joinOperator
-        ];
-
         $isDivideOperator = $joinOperator instanceof DivideOperator;
         $totalComponents  = count($this->components);
 
         if ($isDeferredComponent && $isDivideOperator && $totalComponents >= 1) {
+            dd('here');
             array_splice($this->components, $totalComponents - 1, 0, $component);
         } else {
             $this->components[] = $component;
         }
 
-        return $component['component'];
+        return $component;
     }
 
     /**
@@ -72,8 +68,8 @@ class Expression
     public function getComponent(int $id): ?Component
     {
         foreach ($this->components as $component) {
-            if ($component['component']->getId() === $id) {
-                return $component['component'];
+            if ($component->getId() === $id) {
+                return $component;
             }
         }
 
@@ -87,7 +83,7 @@ class Expression
     public function getComponentAtIndex(int $index): ?Component
     {
         if (isset($this->components[$index])) {
-            return $this->components[$index]['component'];
+            return $this->components[$index];
         }
 
         return null;
@@ -104,7 +100,7 @@ class Expression
     public function removeComponent(int $id): ?int
     {
         foreach ($this->components as $idx => $component) {
-            if ($component['component']->getId() === $id) {
+            if ($component->getId() === $id) {
                 unset($this->components[$idx]);
                 return $idx;
             }
@@ -125,12 +121,7 @@ class Expression
             return 0;
         }
 
-        return array_reduce($this->components, function ($carry, $componentOperator) use (&$value) {
-            /** @var IOperationContract $operator */
-            $operator  = $componentOperator['operator'];
-            /** @var Component $component */
-            $component = $componentOperator['component'];
-
+        return array_reduce($this->components, function ($carry, $component) use (&$value) {
             // If we had a carryover component, its likely it had a left value
             // but no right value (as a '(' was encountered) in this situation
             // we need to balance the equation so the left depends on the previous
@@ -143,7 +134,7 @@ class Expression
             }
 
             $value = $component->getValue();
-            return $operator->evaluate($carry, $value);
+            return $component->getJoinOperator()->evaluate($carry, $value);
         }, 0);
     }
 }

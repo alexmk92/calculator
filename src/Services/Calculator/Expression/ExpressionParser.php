@@ -243,8 +243,9 @@ class ExpressionParser
         // Ensure our pointers are reset for the next parse.
         $this->resetPointers();
         // Release our expression and component state
-        $this->expressions = [];
+        $this->expression  = new Expression();
         $this->symbolIndex = 0;
+        $this->deferredComponentIndexes = [];
     }
 
     /**
@@ -333,7 +334,6 @@ class ExpressionParser
 
         if (is_null($component)) {
             $component = new Component($this->currentLeft, $this->currentOperator, $this->currentRight);
-            dd($component);
         }
 
         return $component;
